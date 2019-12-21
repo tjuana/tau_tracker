@@ -4,97 +4,139 @@ using UnityEngine;
 
 public class GestureController : MonoBehaviour
 {
-    const float ADJUSTMENT_FACTOR = 0.01f;
+    private const float ADJUSTMENT_FACTOR = 0.01f;
+    private const int DELAY = 50;
 
-    public TauTrackerClient.SensorEnum wrist;
-    public TauTrackerClient.SensorEnum thumb;
-    public TauTrackerClient.SensorEnum index;
-    public TauTrackerClient.SensorEnum middle;
-    public TauTrackerClient.SensorEnum ring;
-    public TauTrackerClient.SensorEnum pinky;
+    private Camera _camera;
+
+    public TauTrackerClient.SensorEnum _wrist;
+    public TauTrackerClient.SensorEnum _thumb;
+    public TauTrackerClient.SensorEnum _index;
+    public TauTrackerClient.SensorEnum _middle;
+    public TauTrackerClient.SensorEnum _ring;
+    public TauTrackerClient.SensorEnum _pinky;
     //for debug
-    private int counter = 0;
+    private int delayCounter = 0;
+
+
+    public GameObject pointFinger;
+    public GameObject middleFinger;
+    public GameObject ringFinger;
+    public GameObject pinkyFinger;
+
+    public GameObject pointZone;
+
+    private CapsuleCollider pointCollider;
+    private CapsuleCollider middleCollider;
+    private CapsuleCollider ringCollider;
+    private CapsuleCollider pinkyCollider;
+
+    private BoxCollider pointZoneBoxCollider;
 
     void Start()
     {
-        
+        pointCollider = pointFinger.GetComponentInChildren<CapsuleCollider>();
+        middleCollider = middleFinger.GetComponentInChildren<CapsuleCollider>();
+        ringCollider = ringFinger.GetComponentInChildren<CapsuleCollider>();
+        pinkyCollider = pinkyFinger.GetComponentInChildren<CapsuleCollider>();
+
+        pointZoneBoxCollider = pointZone.GetComponent<BoxCollider>();
     }
 
     void Update()
     {
-        counter++;
-        if (counter > 50)
+
+
+        SensorData wristSensorData = TauTrackerClient.Instance.GetSensorData(_wrist);
+        SensorData thumbSensorData = TauTrackerClient.Instance.GetSensorData(_thumb);
+        SensorData indexSensorData = TauTrackerClient.Instance.GetSensorData(_index);
+        SensorData middleSensorData = TauTrackerClient.Instance.GetSensorData(_middle);
+        SensorData ringSensorData = TauTrackerClient.Instance.GetSensorData(_ring);
+        SensorData pinkySensorData = TauTrackerClient.Instance.GetSensorData(_pinky);
+
+        if (wristSensorData != null && thumbSensorData != null && indexSensorData != null &&
+            middleSensorData != null && ringSensorData != null && pinkySensorData != null)
         {
-            SensorData wristSensorData = TauTrackerClient.Instance.GetSensorData(wrist);
-            SensorData thumbSensorData = TauTrackerClient.Instance.GetSensorData(thumb);
-            SensorData indexSensorData = TauTrackerClient.Instance.GetSensorData(index);
-            SensorData middleSensorData = TauTrackerClient.Instance.GetSensorData(middle);
-            SensorData ringSensorData = TauTrackerClient.Instance.GetSensorData(ring);
-            SensorData pinkySensorData = TauTrackerClient.Instance.GetSensorData(pinky);
+            Vector3 wristPos = wristSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
+            Vector3 thumbPos = thumbSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
+            Vector3 indexPos = indexSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
+            Vector3 middlePos = middleSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
+            Vector3 ringPos = ringSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
+            Vector3 pinkyPos = pinkySensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
 
-            if (wristSensorData != null && thumbSensorData != null && indexSensorData != null &&
-                middleSensorData != null && ringSensorData != null && pinkySensorData != null)
+            Quaternion indexQuaternion = indexSensorData.GetRotation();
+            Quaternion middleQuaternion = middleSensorData.GetRotation();
+            Quaternion ringQuaternion = ringSensorData.GetRotation();
+            Quaternion pinkyQuaternion = pinkySensorData.GetRotation();
+
+            Vector3 indexEulerAngles = indexQuaternion.eulerAngles;
+            Vector3 middleEulerAngles = middleQuaternion.eulerAngles;
+            Vector3 ringEulerAngle = ringQuaternion.eulerAngles;
+            Vector3 pinkyEulerAngle = Quaternion.ToEulerAngles(pinkyQuaternion);
+
+            Vector3 indexDirection = indexPos - wristPos;
+            Vector3 thumbDirection = thumbPos - wristPos;
+            Vector3 middleDirection = middlePos - wristPos;
+            Vector3 ringDirection = ringPos - wristPos;
+            Vector3 pinkyDirection = pinkyPos - wristPos;
+
+            var middleProjectionToIndexDirection = Vector3.Dot(indexDirection, middleDirection) * ADJUSTMENT_FACTOR;
+            var ringProjectionToIndexDirection = Vector3.Dot(indexDirection, ringDirection) * ADJUSTMENT_FACTOR;
+            var pinkyProjectionToIndexDirection = Vector3.Dot(indexDirection, pinkyDirection) * ADJUSTMENT_FACTOR;
+
+            var indexMagnitude = indexDirection.magnitude;
+
+            //Debug.Log("index  " + indexEulerAngles + "  middle" +
+            //          middleEulerAngles);
+
+            if (indexMagnitude > middleProjectionToIndexDirection &&
+                indexMagnitude > ringProjectionToIndexDirection &&
+                indexMagnitude > pinkyProjectionToIndexDirection)
             {
-                Vector3 wristPos = wristSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                                                                  //Quaternion s1_rot = sensorData1.GetRotation();
-                Vector3 thumbPos = thumbSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                Vector3 indexPos = indexSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                Vector3 middlePos = middleSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                Vector3 ringPos = ringSensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                Vector3 pinkyPos = pinkySensorData.GetPosition(); // TauTrackerClient.Instance.trackerPositionFactor;
-                                                                  //Vector3 pinch_pos = (s1_pos + s2_pos) * 0.5f;
-
-                //Debug.Log(wristPos + "  " + thumbPos + "    " + indexPos + "    " +
-                //      "    " + middlePos + "    " + ringPos + "   " + pinkyPos);
-
-                Vector3 indexDirection = indexPos - wristPos;
-                Vector3 thumbDirection = thumbPos - wristPos;
-                Vector3 middleDirection = middlePos - wristPos;
-                Vector3 ringDirection = ringPos - wristPos;
-                Vector3 pinkyDirection = pinkyPos - wristPos;
-
-                var middleProjectionToIndexDirection = Vector3.Dot(indexDirection, middleDirection) * ADJUSTMENT_FACTOR;
-                var ringProjectionToIndexDirection = Vector3.Dot(indexDirection, ringDirection) * ADJUSTMENT_FACTOR;
-                var pinkyProjectionToIndexDirection = Vector3.Dot(indexDirection, pinkyDirection) * ADJUSTMENT_FACTOR;
-
-                var indexMagnitude = indexDirection.magnitude;
-
-                //Debug.Log("index magnitude = " + indexMagnitude + "     middle projection to index derection" +
-                //          middleProjectionToIndexDirection);
-
-                if (indexMagnitude > middleProjectionToIndexDirection &&
-                    indexMagnitude > ringProjectionToIndexDirection &&
-                    indexMagnitude > pinkyProjectionToIndexDirection)
+                delayCounter++;
+                if (delayCounter > DELAY)
                 {
-                    Debug.Log("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDRAW");
+                    //Debug.Log("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDRAW");
+                    delayCounter = DELAY;
                 }
-
-                counter = 0;
+            }
+            else
+            {
+                delayCounter = 0;
             }
 
+
+            //if (counter > 10)
+            //{
+            //    Debug.Log(indexEulerAngles + "           " + middleEulerAngles + "    " + ringEulerAngle + "    " +
+            //              "    " + pinkyEulerAngle);
+            //    counter = 0;
+            //}
+
+            //counter++;
+            //Debug.Log(wristPos + "  " + thumbPos + "    " + indexPos + "    " +
+            //      "    " + middlePos + "    " + ringPos + "   " + pinkyPos);
+
+            //if (indexEulerAngles.y < 0 && middleEulerAngles.y > 0 &&
+            //    ringEulerAngle.y > 0 && pinkyEulerAngle.y > 0)
+            //{
+            //    StartCoroutine(Draw(indexPos));
+            //}
         }
+
     }
-
-    void OnPinch(Vector3 pinch_position, Quaternion s1_rot)
+    IEnumerator Draw(Vector3 point)
     {
-        // ...
-        // Check if we pinched a movable object and grab the closest one.
-        //Collider[] close_things = Physics.OverlapSphere(pinch_position, 1f);
-        //for (int j = 0; j < close_things.Length; ++j)
-        //{
-        //    Collider grabbed_object_ = close_things[j];
-        //    Rigidbody rb = grabbed_object_.GetComponent<Rigidbody>();
-        //    if (rb)
-        //    {
-        //        Vector3 distance = pinch_position - grabbed_object_.transform.position;
-        //        rb.velocity = Vector3.zero;
-        //        rb.angularVelocity = Vector3.zero;
-        //        rb.AddForce(2000 * distance);
+        yield return new WaitForSeconds(1);
 
-        //        Quaternion quat10 = s1_rot * Quaternion.Inverse(grabbed_object_.transform.rotation);
-        //        rb.AddTorque(500 * quat10.x, 500 * quat10.y, 500 * quat10.z, ForceMode.Force);
-        //    }
-
-        //}
+        Debug.Log("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDRAW");
+        Plane screenPlane = new Plane(Camera.main.transform.forward * -1,
+            this.transform.position);
+        Ray mRay = Camera.main.ScreenPointToRay(point);
+        float rayDistance;
+        if (screenPlane.Raycast(mRay, out rayDistance))
+        {
+            this.transform.position = mRay.GetPoint(rayDistance);
+        }
     }
 }
